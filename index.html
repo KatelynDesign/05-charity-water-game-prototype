@@ -1,13 +1,221 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Charity Water Game</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
+  <title>Filter Frenzy</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Welcome to the Charity Water Game Prototype</h1>
-    <script src="script.js"></script>
+  <!-- Starter Screen -->
+  <div id="starter-screen" class="screen starter-screen">
+    <div class="sky-background">
+      <!-- ...clouds markup... -->
+      <div class="cloud cloud1">
+        <div class="cloud-part cloud-part1"></div>
+        <div class="cloud-part cloud-part2"></div>
+        <div class="cloud-part cloud-part3"></div>
+      </div>
+      <div class="cloud cloud2">
+        <div class="cloud-part cloud-part1"></div>
+        <div class="cloud-part cloud-part2"></div>
+        <div class="cloud-part cloud-part3"></div>
+      </div>
+      <div class="cloud cloud3">
+        <div class="cloud-part cloud-part1"></div>
+        <div class="cloud-part cloud-part2"></div>
+        <div class="cloud-part cloud-part3"></div>
+      </div>
+      <div class="cloud cloud4">
+        <div class="cloud-part cloud-part1"></div>
+        <div class="cloud-part cloud-part2"></div>
+        <div class="cloud-part cloud-part3"></div>
+      </div>
+      <div class="cloud cloud5">
+        <div class="cloud-part cloud-part1"></div>
+        <div class="cloud-part cloud-part2"></div>
+        <div class="cloud-part cloud-part3"></div>
+      </div>
+      <div class="cloud cloud6">
+        <div class="cloud-part cloud-part1"></div>
+        <div class="cloud-part cloud-part2"></div>
+      </div>
+      <div class="cloud cloud7">
+        <div class="cloud-part cloud-part1"></div>
+        <div class="cloud-part cloud-part2"></div>
+      </div>
+      <div class="cloud cloud8">
+        <div class="cloud-part cloud-part1"></div>
+        <div class="cloud-part cloud-part2"></div>
+        <div class="cloud-part cloud-part3"></div>
+      </div>
+      <div class="cloud cloud9">
+        <div class="cloud-part cloud-part1"></div>
+        <div class="cloud-part cloud-part2"></div>
+      </div>
+      <div class="cloud cloud10">
+        <div class="cloud-part cloud-part1"></div>
+        <div class="cloud-part cloud-part2"></div>
+      </div>
+    </div>
+    <!-- Level Selector button replaces Settings button -->
+    <button id="level-selector-btn" title="Select Level">🔢</button>
+    <!-- Hanging sign anchor dots -->
+    <div class="sign-anchor">
+      <div class="sign-anchor-dot"></div>
+      <div class="sign-anchor-dot"></div>
+    </div>
+    <div class="sign">
+      <span>
+        Filter<br>Frenzy
+      </span>
+    </div>
+    <button id="start-btn">Start</button>
+    <div class="buckets-row">
+      <div class="bucket bucket-clean">
+        <span class="bucket-label">Clean</span>
+        <div class="bucket-shadow"></div>
+      </div>
+      <div class="bucket bucket-dirty">
+        <span class="bucket-label">Dirty</span>
+        <div class="bucket-shadow"></div>
+      </div>
+      <div class="bucket bucket-unknown">
+        <span class="bucket-label">Unknown</span>
+        <div class="bucket-shadow"></div>
+      </div>
+    </div>
+    <div class="ground">
+      <div class="grass">
+        <div class="grass-blade blade1"></div>
+        <div class="grass-blade blade2"></div>
+        <div class="grass-blade blade3"></div>
+        <div class="grass-blade blade4"></div>
+        <div class="grass-blade blade5"></div>
+        <div class="grass-blade blade6"></div>
+        <div class="grass-blade blade7"></div>
+        <div class="grass-blade blade8"></div>
+      </div>
+      <div class="dirt">
+        <div class="dirt-rock rock1"></div>
+        <div class="dirt-rock rock2"></div>
+        <div class="dirt-rock rock3"></div>
+        <div class="dirt-rock rock4"></div>
+        <div class="dirt-rock rock5"></div>
+        <div id="charity-logo" class="charity-logo">
+          <img src="img/charity_water_logo_white2.jpg" alt="charity: water logo" class="cw-logo-img">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Screen -->
+  <div id="game-screen" class="screen game-screen hidden">
+    <div class="sky-background">
+      <!-- ...clouds markup (same as above)... -->
+      <div class="cloud cloud1">
+        <div class="cloud-part cloud-part1"></div>
+        <div class="cloud-part cloud-part2"></div>
+        <div class="cloud-part cloud-part3"></div>
+      </div>
+      <div class="cloud cloud2">
+        <div class="cloud-part cloud-part1"></div>
+        <div class="cloud-part cloud-part2"></div>
+        <div class="cloud-part cloud-part3"></div>
+      </div>
+      <div class="cloud cloud3">
+        <div class="cloud-part cloud-part1"></div>
+        <div class="cloud-part cloud-part2"></div>
+        <div class="cloud-part cloud-part3"></div>
+      </div>
+      <div class="cloud cloud4">
+        <div class="cloud-part cloud-part1"></div>
+        <div class="cloud-part cloud-part2"></div>
+        <div class="cloud-part cloud-part3"></div>
+      </div>
+      <div class="cloud cloud5">
+        <div class="cloud-part cloud-part1"></div>
+        <div class="cloud-part cloud-part2"></div>
+        <div class="cloud-part cloud-part3"></div>
+      </div>
+      <div class="cloud cloud6">
+        <div class="cloud-part cloud-part1"></div>
+        <div class="cloud-part cloud-part2"></div>
+      </div>
+      <div class="cloud cloud7">
+        <div class="cloud-part cloud-part1"></div>
+        <div class="cloud-part cloud-part2"></div>
+      </div>
+      <div class="cloud cloud8">
+        <div class="cloud-part cloud-part1"></div>
+        <div class="cloud-part cloud-part2"></div>
+        <div class="cloud-part cloud-part3"></div>
+      </div>
+      <div class="cloud cloud9">
+        <div class="cloud-part cloud-part1"></div>
+        <div class="cloud-part cloud-part2"></div>
+      </div>
+      <div class="cloud cloud10">
+        <div class="cloud-part cloud-part1"></div>
+        <div class="cloud-part cloud-part2"></div>
+      </div>
+    </div>
+    <div class="score-tracker">
+      Score: <span id="game-score">0</span>
+    </div>
+    <!-- Place this where you want the timer to show -->
+    <div id="game-timer">2:00</div>
+    <div class="buckets-row">
+      <div class="bucket bucket-clean">
+        <span class="bucket-label">Clean</span>
+        <div class="bucket-shadow"></div>
+      </div>
+      <div class="bucket bucket-dirty">
+        <span class="bucket-label">Dirty</span>
+        <div class="bucket-shadow"></div>
+      </div>
+      <div class="bucket bucket-unknown">
+        <span class="bucket-label">Unknown</span>
+        <div class="bucket-shadow"></div>
+      </div>
+    </div>
+    <div class="ground">
+      <div class="grass">
+        <div class="grass-blade blade1"></div>
+        <div class="grass-blade blade2"></div>
+        <div class="grass-blade blade3"></div>
+        <div class="grass-blade blade4"></div>
+        <div class="grass-blade blade5"></div>
+        <div class="grass-blade blade6"></div>
+        <div class="grass-blade blade7"></div>
+        <div class="grass-blade blade8"></div>
+        <div class="grass-blade blade9"></div>
+        <div class="grass-blade blade10"></div>
+        <div class="grass-blade blade11"></div>
+      </div>
+      <div class="dirt">
+        <div class="dirt-rock rock1"></div>
+        <div class="dirt-rock rock2"></div>
+        <div class="dirt-rock rock3"></div>
+        <div class="dirt-rock rock4"></div>
+        <div class="dirt-rock rock5"></div>
+        <div class="dirt-rock rock6"></div>
+        <div id="charity-logo-game" class="charity-logo">
+          <img src="img/charity_water_logo_white2.jpg" alt="charity: water logo" class="cw-logo-img">
+        </div>
+      </div>
+    </div>
+    <!-- Message Overlay (hidden by default, now inside game screen) -->
+    <div id="charity-message-overlay" class="hidden" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.65); display:flex; align-items:center; justify-content:center; z-index:100;">
+      <div style="background:#fff; border-radius:18px; max-width:400px; padding:32px 24px; box-shadow:0 8px 32px #0004; text-align:center;">
+        <img src="img/charity_water_logo_white2.jpg" alt="charity: water logo" style="height:48px; margin-bottom:18px; background:#222; border-radius:8px;">
+        <div style="font-size:1.2rem; color:#222; margin-bottom:24px;">
+          Clean water changes everything!<br>
+          Thank you for playing and learning about the importance of safe water.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js" defer></script>
 </body>
 </html>
