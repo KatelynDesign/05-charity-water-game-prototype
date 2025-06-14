@@ -13,8 +13,9 @@ const scoreDisplay = document.getElementById('game-score');
 // Show Xs for misses (top display)
 let xDisplay = document.createElement('div');
 xDisplay.id = 'misses-display';
+// Move Xs further down to make more space for weather message
 xDisplay.style.position = 'absolute';
-xDisplay.style.top = '80px';
+xDisplay.style.top = '92px'; // moved further down
 xDisplay.style.left = '50%';
 xDisplay.style.transform = 'translateX(-50%)';
 xDisplay.style.fontSize = '2rem';
@@ -145,33 +146,139 @@ function startWeatherChanges() {
     currentWeatherType = newWeatherType;
     updateWeatherBackground(currentWeatherType);
 
-    // Switch the color meanings for some (not all) rain drop types
+    // --- Show a weather message at the top of the game screen ---
+    // Remove any previous weather message
+    let oldMsg = document.getElementById('weather-message');
+    if (oldMsg) oldMsg.remove();
+
+    // Pick a message based on the weather type
+    let weatherMsg = '';
+    if (currentWeatherType === 'storm') {
+      weatherMsg = 'Warning: Thunder Storm! Watch out for tricky drops!';
+    } else if (currentWeatherType === 'sunny') {
+      weatherMsg = 'Sunny skies! Clean water is easier to spot!';
+    } else if (currentWeatherType === 'random') {
+      weatherMsg = 'Surprise Weather! Anything can happen!';
+    } else {
+      weatherMsg = 'Normal weather. Stay focused!';
+    }
+
+    // Create and show the weather message
+    const msgDiv = document.createElement('div');
+    msgDiv.id = 'weather-message';
+    msgDiv.textContent = weatherMsg;
+    // Move the message further down, above the Xs, with more space
+    msgDiv.style.position = 'absolute';
+    msgDiv.style.top = '44px'; // moved further down
+    msgDiv.style.left = '50%';
+    msgDiv.style.transform = 'translateX(-50%)';
+    msgDiv.style.fontSize = '1.55rem';
+    msgDiv.style.fontWeight = 'bold';
+    msgDiv.style.color = '#fff';
+    msgDiv.style.background = 'rgba(44, 62, 80, 0.88)';
+    msgDiv.style.borderRadius = '12px';
+    msgDiv.style.padding = '12px 28px';
+    msgDiv.style.zIndex = '5'; // Lower than rain drops (z-index:12)
+    msgDiv.style.boxShadow = '0 2px 8px #0002';
+    msgDiv.style.letterSpacing = '0.5px';
+    msgDiv.style.textAlign = 'center';
+    msgDiv.style.fontFamily = 'Segoe UI, Arial, sans-serif';
+    msgDiv.style.pointerEvents = 'none'; // Let clicks/taps go through
+    msgDiv.style.maxWidth = '92vw';
+    msgDiv.style.opacity = '0.98';
+    // Responsive: adjust font and padding for small screens
+    if (window.innerWidth < 600) {
+      msgDiv.style.fontSize = '1.18rem';
+      msgDiv.style.padding = '8px 10px';
+      msgDiv.style.top = '36px'; // move down a bit on small screens too
+    }
+    // Remove the message after 4 seconds
+    setTimeout(() => {
+      msgDiv.remove();
+    }, 4000);
+    gameScreen.appendChild(msgDiv);
+
+    // Only change rain drops if the weather is NOT normal
+    if (currentWeatherType !== 'normal') {
+      // Change about half the drops for visibility
+      const drops = document.querySelectorAll('.rain-drop');
+      drops.forEach(drop => {
+        if (Math.random() < 0.5) {
+          // Get the current type of the drop
+          const currentType = drop.dataset.type;
+          // Pick a new type that is different from the current one
+          const possibleTypes = rainTypes.filter(rt => rt.type !== currentType);
+          const newTypeObj = possibleTypes[Math.floor(Math.random() * possibleTypes.length)];
+          drop.dataset.type = newTypeObj.type;
+          const newColor = getRainDropColor(newTypeObj.type);
+
+          // --- Always update the icon/emoji to match the new type ---
+          // Find the correct icon for the new type
+          let newIcon = '';
+          for (let i = 0; i < rainTypes.length; i++) {
+            if (rainTypes[i].type === newTypeObj.type) {
+              newIcon = rainTypes[i].icon;
+              break;
+            }
+          }
+
+          // Update the SVG to match the new type and icon
+          const svgDiv = drop.children[1];
+          if (svgDiv) {
+            svgDiv.innerHTML = `
+              <svg width="60" height="80" viewBox="0 0 36 48" style="display:block; pointer-events:none;">
+                <path d="M18 4
+                  C18 4, 4 24, 4 34
+                  a14 14 0 0 0 28 0
+                  C32 24, 18 4, 18 4
+                  Z"
+                  fill="${newColor}" stroke="#1a1a1a" stroke-width="2"/>
+                <ellipse cx="13" cy="20" rx="5" ry="13" fill="#fff" fill-opacity="0.35" />
+                <text x="18" y="34" text-anchor="middle" font-size="22" fill="#fff" stroke="#0008" stroke-width="1" dy="0.35em" font-family="Segoe UI, Arial, sans-serif">${newIcon}</text>
+              </svg>
+            `;
+          }
+          // Glow effect for the drop (very visible, but round)
+          const glowDiv = drop.children[0];
+          if (glowDiv) {
+            glowDiv.style.transition = "background 0.2s, box-shadow 0.2s";
+            glowDiv.style.background = "#fff";
+            glowDiv.style.boxShadow = "0 0 40px 20px #fff";
+            glowDiv.style.display = "block";
+            setTimeout(() => {
+              glowDiv.style.background = newColor;
+              glowDiv.style.boxShadow = "0 0 24px 8px " + newColor;
+              setTimeout(() => {
+                glowDiv.style.boxShadow = "";
+                glowDiv.style.display = "none";
+              }, 300);
+            }, 200);
+          }
+        }
+      });
+    }
+
+    // Randomly shuffle the meaning of rain drop types (color mapping)
     const types = ['clean', 'dirty', 'unknown'];
-    // Shuffle types
     for (let i = types.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [types[i], types[j]] = [types[j], types[i]];
     }
-    // Pick 1 or 2 types to change
     const numToChange = Math.random() < 0.5 ? 1 : 2;
     const toChange = types.slice(0, numToChange);
 
-    // Make a copy of the current mapping
     let newMap = { ...rainColorMap };
-    // For each type to change, pick a new color (not its current one)
     toChange.forEach(type => {
       const otherColors = types.filter(t => t !== rainColorMap[type]);
       newMap[type] = otherColors[Math.floor(Math.random() * otherColors.length)];
     });
 
-    // Make sure no two types have the same color
     const colorSet = new Set(Object.values(newMap));
     if (colorSet.size === 3) {
       rainColorMap = newMap;
-      showComboMessage('Weather changed! Some drop colors changed meaning!');
-    } else {
-      showComboMessage('Weather changed! (No big changes this time)');
+      // No combo message here, weather message is shown instead
     }
+    // else: no message, just weather message
   }, weatherChangeInterval);
 }
 
@@ -316,6 +423,7 @@ function animateRainDropRainy(drop, speed) {
   const origLeft = parseInt(drop.style.left, 10);
   const driftDir = Math.random() > 0.5 ? 1 : -1;
   const driftAmount = Math.random() * 30;
+
   function fall() {
     if (!gameActive) {
       drop.remove();
@@ -330,12 +438,50 @@ function animateRainDropRainy(drop, speed) {
     let drift = Math.sin(percent * Math.PI) * driftAmount * driftDir;
     drop.style.left = `${origLeft + drift}px`;
 
+    // Only count as missed if the drop reaches the ground and was NOT dropped by the player
     if (percent < 1) {
       drop._falling = requestAnimationFrame(fall);
     } else {
       drop._falling = null;
-      // If not caught, count as miss
-      dropMissed(drop);
+      // Only call dropMissed if the drop is still in the DOM (not already removed by drag/drop)
+      if (document.body.contains(drop)) {
+        // Only count as missed if the drop is NOT inside a bucket or on a name tag
+        // We'll check if the drop overlaps any bucket at the end of its fall
+        let missed = true;
+        const buckets = document.querySelectorAll('.game-screen .bucket');
+        const dropRect = drop.getBoundingClientRect();
+        buckets.forEach(bucket => {
+          const rect = bucket.getBoundingClientRect();
+          if (
+            dropRect.left + dropRect.width / 2 > rect.left &&
+            dropRect.left + dropRect.width / 2 < rect.right &&
+            dropRect.top + dropRect.height / 2 > rect.top &&
+            dropRect.top + dropRect.height / 2 < rect.bottom
+          ) {
+            missed = false;
+          }
+        });
+        // Also check for name tag (sign)
+        const sign = document.querySelector('.sign');
+        if (sign) {
+          const signRect = sign.getBoundingClientRect();
+          if (
+            dropRect.left + dropRect.width / 2 > signRect.left &&
+            dropRect.left + dropRect.width / 2 < signRect.right &&
+            dropRect.top + dropRect.height / 2 > signRect.top &&
+            dropRect.top + dropRect.height / 2 < signRect.bottom
+          ) {
+            missed = false;
+          }
+        }
+        // Only call dropMissed if not over a bucket or sign
+        if (missed) {
+          dropMissed(drop);
+        } else {
+          // If it lands on a bucket or sign, just remove it (no penalty)
+          drop.remove();
+        }
+      }
     }
   }
   drop._falling = requestAnimationFrame(fall);
@@ -385,7 +531,8 @@ function makeDraggable(drop) {
       drop.style.boxShadow = `0 4px 16px ${drop.style.background}88`;
       document.onmousemove = null;
       document.onmouseup = null;
-      checkDropInBucket(drop);
+      // Only check for bucket drop, do not call dropMissed here
+      checkDropInBucket(drop, true);
     };
   };
 
@@ -422,7 +569,7 @@ function makeDraggable(drop) {
       drop.style.boxShadow = `0 4px 16px ${drop.style.background}88`;
       document.ontouchmove = null;
       document.ontouchend = null;
-      checkDropInBucket(drop);
+      checkDropInBucket(drop, true);
     };
   };
 
@@ -433,7 +580,8 @@ function makeDraggable(drop) {
   };
 }
 
-function checkDropInBucket(drop) {
+// Only allow scoring if the drop is actually inside a bucket when released by the player
+function checkDropInBucket(drop, isPlayerDrop) {
   if (!gameActive) return;
   drop.style.transition = 'box-shadow 0.2s';
   drop.style.zIndex = '12';
@@ -459,10 +607,9 @@ function checkDropInBucket(drop) {
       placed = true;
     }
   });
-  if (!placed) {
-    if (parseInt(drop.style.top, 10) > window.innerHeight - 220) {
-      dropMissed(drop);
-    }
+  // Only count as missed if the drop was not placed in a bucket and was dropped by the player
+  if (!placed && isPlayerDrop) {
+    dropMissed(drop);
   }
 }
 
@@ -500,35 +647,190 @@ function scorePoint(drop) {
     }
   }
   drop.remove();
-  if (score >= pointsToWin) {
+  // End the game when the player reaches 30 points
+  if (score >= 30) {
     endGame(true);
   }
 }
 
 function addTimeBoost() {
+  // Get the timer before the boost
   let timerText = document.getElementById('game-timer').textContent;
   let parts = timerText.split(':');
-  let seconds = parseInt(parts[0]) * 60 + parseInt(parts[1]) + 10;
-  let minutes = Math.floor(seconds / 60);
-  let secs = seconds % 60;
-  document.getElementById('game-timer').textContent = `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
-  showComboMessage('Time Boost! +10s');
+  let seconds = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+
+  // Remove any previous time boost visual
+  let oldBoost = document.getElementById('timer-boost-visual');
+  if (oldBoost) oldBoost.remove();
+
+  // Create the visual element for the time boost
+  const boostDiv = document.createElement('span');
+  boostDiv.id = 'timer-boost-visual';
+  boostDiv.style.marginLeft = '18px';
+  boostDiv.style.fontSize = '2.1rem';
+  boostDiv.style.fontWeight = 'bold';
+  boostDiv.style.color = '#159A48';
+  boostDiv.style.verticalAlign = 'middle';
+  boostDiv.style.display = 'inline-flex';
+  boostDiv.style.alignItems = 'center';
+  boostDiv.style.transition = 'opacity 0.3s';
+  boostDiv.style.background = 'rgba(255,255,255,0.92)';
+  boostDiv.style.borderRadius = '16px';
+  boostDiv.style.padding = '10px 22px';
+  boostDiv.style.boxShadow = '0 2px 12px #0002';
+
+  // Show stopwatch, "+3", and math for clarity
+  boostDiv.innerHTML = `
+    <span style="font-size:2.2rem; margin-right:8px;">⏱️</span>
+    <span style="margin-right:8px;">+3</span>
+    <span id="timer-boost-math" style="margin-left:8px; color:#222; font-size:1.2rem;"></span>
+    <span style="margin-left:12px; font-size:1rem; color:#555;">(Time Boost!)</span>
+  `;
+
+  // Add the visual next to the timer
+  if (timerDisplay && timerDisplay.parentNode) {
+    timerDisplay.parentNode.insertBefore(boostDiv, timerDisplay.nextSibling);
+  }
+
+  // Show the math: current time + 3, then update to new time
+  const mathSpan = boostDiv.querySelector('#timer-boost-math');
+  if (mathSpan) {
+    let min = Math.floor(seconds / 60);
+    let sec = seconds % 60;
+    mathSpan.textContent = `(${min}:${sec < 10 ? '0' : ''}${sec} + 3)`;
+  }
+
+  // After 1.2 seconds, add the 3 seconds and update the timer visually
+  setTimeout(() => {
+    let newSeconds = seconds + 3;
+    let minutes = Math.floor(newSeconds / 60);
+    let secs = newSeconds % 60;
+    timerDisplay.textContent = `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+    if (mathSpan) {
+      mathSpan.textContent = `= ${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+    // Fade out the visual after a short delay
+    setTimeout(() => {
+      boostDiv.style.opacity = '0';
+      setTimeout(() => {
+        boostDiv.remove();
+      }, 400);
+    }, 900);
+  }, 1200);
 }
 
 function addPointsBoost() {
-  score += 3;
-  showComboMessage('Bonus! +3 Points');
-  updateScore();
+  // Find the score tracker (where the score is displayed)
+  const scoreTracker = document.querySelector('.score-tracker');
+  if (!scoreTracker) return;
+
+  // Remove any previous bonus visual if it exists
+  let oldBonus = document.getElementById('bonus-points-visual');
+  if (oldBonus) oldBonus.remove();
+
+  // Create the bonus visual element
+  const bonusDiv = document.createElement('span');
+  bonusDiv.id = 'bonus-points-visual';
+  bonusDiv.style.marginLeft = '18px';
+  bonusDiv.style.fontSize = '2.1rem';
+  bonusDiv.style.fontWeight = 'bold';
+  bonusDiv.style.color = '#2E9DF7';
+  bonusDiv.style.verticalAlign = 'middle';
+  bonusDiv.style.display = 'inline-flex';
+  bonusDiv.style.alignItems = 'center';
+  bonusDiv.style.transition = 'opacity 0.3s';
+  bonusDiv.style.background = 'rgba(255,255,255,0.92)';
+  bonusDiv.style.borderRadius = '16px';
+  bonusDiv.style.padding = '10px 22px';
+  bonusDiv.style.boxShadow = '0 2px 12px #0002';
+
+  // Use a simple SVG rain drop for the icon and show "+5"
+  bonusDiv.innerHTML = `
+    <svg width="32" height="40" viewBox="0 0 28 36" style="margin-right:8px;">
+      <path d="M14 2 C14 2, 2 18, 2 26 a12 12 0 0 0 24 0 C26 18, 14 2, 14 2 Z"
+        fill="#4fc3f7" stroke="#1a1a1a" stroke-width="1.5"/>
+      <ellipse cx="10" cy="15" rx="3" ry="7" fill="#fff" fill-opacity="0.35" />
+    </svg>
+    <span style="margin-right:8px;">+5</span>
+    <span id="bonus-score-math" style="margin-left:8px; color:#222; font-size:1.2rem;"></span>
+    <span style="margin-left:12px; font-size:1rem; color:#555;">(Bonus Combo!)</span>
+  `;
+
+  // Add the bonus visual next to the score tracker
+  scoreTracker.appendChild(bonusDiv);
+
+  // Show the math: current score + 5, then update to new score
+  const mathSpan = bonusDiv.querySelector('#bonus-score-math');
+  if (mathSpan) {
+    mathSpan.textContent = `(${score} + 5)`;
+  }
+
+  // After 1.2 seconds, add the 5 points and update the score visually
+  setTimeout(() => {
+    score += 5;
+    updateScore();
+    if (mathSpan) {
+      mathSpan.textContent = `= ${score}`;
+    }
+    // Fade out the bonus visual after a short delay
+    setTimeout(() => {
+      bonusDiv.style.opacity = '0';
+      setTimeout(() => {
+        bonusDiv.remove();
+      }, 400);
+    }, 900);
+  }, 1200);
 }
 
 function removeXBoost() {
-  if (misses > 0) {
-    misses--;
-    showComboMessage('Mistake Removed!');
-    updateMisses();
-  } else {
-    showComboMessage('No X to remove!');
-  }
+  // Find the X display (misses)
+  const xDisplay = document.getElementById('misses-display');
+  if (!xDisplay) return;
+
+  // Remove any previous X boost visual
+  let oldX = document.getElementById('x-boost-visual');
+  if (oldX) oldX.remove();
+
+  // Create the X remover visual
+  const xDiv = document.createElement('span');
+  xDiv.id = 'x-boost-visual';
+  xDiv.style.marginLeft = '18px';
+  xDiv.style.fontSize = '2.1rem';
+  xDiv.style.fontWeight = 'bold';
+  xDiv.style.color = '#F5402C';
+  xDiv.style.verticalAlign = 'middle';
+  xDiv.style.display = 'inline-flex';
+  xDiv.style.alignItems = 'center';
+  xDiv.style.transition = 'opacity 0.3s';
+  xDiv.style.background = 'rgba(255,255,255,0.92)';
+  xDiv.style.borderRadius = '16px';
+  xDiv.style.padding = '10px 22px';
+  xDiv.style.boxShadow = '0 2px 12px #0002';
+
+  // Show red X, "-1", and info
+  xDiv.innerHTML = `
+    <span style="font-size:2.2rem; margin-right:8px;">❌</span>
+    <span style="margin-right:8px;">-1</span>
+    <span style="margin-left:8px; color:#222; font-size:1.2rem;">(Mistake Removed!)</span>
+  `;
+
+  // Add the visual next to the X display
+  xDisplay.appendChild(xDiv);
+
+  // After 1.2 seconds, remove an X if possible
+  setTimeout(() => {
+    if (misses > 0) {
+      misses--;
+      updateMisses();
+    }
+    // Fade out the visual after a short delay
+    setTimeout(() => {
+      xDiv.style.opacity = '0';
+      setTimeout(() => {
+        xDiv.remove();
+      }, 400);
+    }, 900);
+  }, 1200);
 }
 
 // --- 11. UI FEEDBACK (COMBO, X, ETC) ---
@@ -632,12 +934,12 @@ function updateMisses() {
       xDisplay.style.left = '50%';
       xDisplay.style.transform = 'translateX(-50%)';
       xDisplay.style.fontSize = '2.5rem';
-      xDisplay.style.top = '120px';
+      xDisplay.style.top = '102px'; // was 120px, now a bit lower
     } else {
       xDisplay.style.left = '50%';
       xDisplay.style.transform = 'translateX(-50%)';
       xDisplay.style.fontSize = '2rem';
-      xDisplay.style.top = '80px';
+      xDisplay.style.top = '92px'; // was 80px/68px, now a bit lower
     }
   }
 }
@@ -705,21 +1007,35 @@ function endGame(win) {
 }
 
 function resetGame() {
+  // Reset score and timer for a new game
   score = 0;
   misses = 0;
   combo = 0;
   level = 1;
   weather = 'normal';
+  timeLeft = 120; // Reset timer to 2:00
   updateScore();
   updateMisses();
   if (scoreDisplay) scoreDisplay.textContent = '0';
+  if (timerDisplay) timerDisplay.textContent = '2:00';
+  // Set background to normal while charity message is on display
+  updateWeatherBackground('normal');
   document.querySelectorAll('.rain-drop').forEach(drop => drop.remove());
+
+  // Always reset rainColorMap to default (no color switching)
+  rainColorMap = {
+    clean: 'clean',
+    dirty: 'dirty',
+    unknown: 'unknown'
+  };
+  // Set currentWeatherType to normal so drops don't switch colors
+  currentWeatherType = 'normal';
 }
 
 // --- 16. GAME START HANDLING ---
 
 function startGameAfterMessage() {
-  // Reset game state and start everything needed for a new game
+  // Always reset game state and background before starting a new game
   resetGame();
   setLevel(level);
   startWeatherChanges();
@@ -737,8 +1053,8 @@ if (startBtn && messageOverlay) {
     messageOverlay.classList.remove('hidden');
     // Make sure the overlay is visible and not transparent
     messageOverlay.style.backgroundColor = 'rgba(0,0,0,0.65)';
-    // Do NOT change messageOverlay.innerHTML or textContent here!
-
+    // --- Reset game state and background while overlay is visible ---
+    resetGame();
     // Wait 15 seconds, then hide the message and start the game
     setTimeout(function() {
       // Hide the message overlay (but keep its content for next time)
@@ -746,7 +1062,8 @@ if (startBtn && messageOverlay) {
       // Set game screen background to normal at game start
       currentWeatherType = 'normal';
       updateWeatherBackground(currentWeatherType);
-      // Start the timer and rain drop game after the charity message disappears
+      // Always reset game state and background before starting
+      resetGame();
       startGameAfterMessage();
     }, 15000); // 15000 milliseconds = 15 seconds
   };
