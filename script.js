@@ -25,7 +25,8 @@ gameScreen && gameScreen.appendChild(xDisplay);
 
 // --- 2. GAME STATE VARIABLES ---
 
-let timeLeft = 120; // 2 minutes
+// Set a shorter game time for a prototype (90 seconds)
+let timeLeft = 90; // 1.5 minutes for a quick prototype game
 let timerInterval;
 let rainInterval;
 let weatherInterval;
@@ -33,12 +34,19 @@ let weatherInterval;
 let gameActive = false;
 let score = 0;
 let misses = 0;
-let rainSpeed = 2500;
-let rainFrequency = 1200;
-let pointsToWin = 15;
+
+// Make rain a bit faster and more frequent as levels go up
+let rainSpeed = 2200;      // How fast drops fall (ms)
+let rainFrequency = 1100;  // How often drops appear (ms)
+let pointsToWin = 25; // Game ends at 25 points
 let level = 1;
 let combo = 0;
-let comboThreshold = 5;
+
+// Set different combo thresholds for each boost
+const comboTimeBoost = 4;    // Every 4 in a row: time boost
+const comboPointsBoost = 7;  // Every 7 in a row: points boost
+const comboXBoost = 10;      // Every 10 in a row: remove X
+
 let weather = 'normal';
 const maxMisses = 3;
 let currentWeatherType = 'normal';
@@ -66,29 +74,25 @@ const rainTypes = [
 // --- 4. TIMER FUNCTIONS ---
 
 function startGameTimer() {
-  timerDisplay.textContent = '2:00';
+  timerDisplay.textContent = '1:30';
   clearInterval(timerInterval);
   timerInterval = setInterval(() => {
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
-    // Format the time as MM:SS
     timerDisplay.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-
-    // When time runs out, stop the timer
     if (timeLeft <= 0) {
       clearInterval(timerInterval);
-      clearInterval(rainInterval); // Stop rain when timer ends
+      clearInterval(rainInterval);
       timerDisplay.textContent = '0:00';
       // You can add more logic here for when the timer ends
     }
-
     timeLeft--;
   }, 1000);
 }
 
 function startGameTimerAndRain() {
-  timeLeft = 120;
-  timerDisplay.textContent = '2:00';
+  timeLeft = 90;
+  timerDisplay.textContent = '1:30';
   clearInterval(timerInterval);
   clearInterval(rainInterval);
   gameActive = true;
@@ -136,7 +140,8 @@ function updateWeatherBackground(type) {
 }
 
 function startWeatherChanges() {
-  let weatherChangeInterval = Math.max(4000, 12000 - level * 1500);
+  // Weather changes a bit more often as level increases, but not too fast
+  let weatherChangeInterval = Math.max(3500, 9000 - level * 800);
   weatherInterval = setInterval(() => {
     const weatherTypes = ['normal', 'storm', 'sunny', 'random'];
     let newWeatherType;
@@ -145,6 +150,16 @@ function startWeatherChanges() {
     } while (newWeatherType === currentWeatherType);
     currentWeatherType = newWeatherType;
     updateWeatherBackground(currentWeatherType);
+
+    // --- Adjust rain speed based on weather ---
+    // If weather is not normal, make rain fall a little faster (but not too hard)
+    if (currentWeatherType !== 'normal') {
+      // Subtract 120ms for a small challenge, but keep it playable for beginners
+      rainSpeed = Math.max(900, 2200 - (level - 1) * 200 - 120);
+    } else {
+      // Normal speed for the current level
+      rainSpeed = Math.max(900, 2200 - (level - 1) * 200);
+    }
 
     // --- Show a weather message at the top of the game screen ---
     // Remove any previous weather message
@@ -167,9 +182,9 @@ function startWeatherChanges() {
     const msgDiv = document.createElement('div');
     msgDiv.id = 'weather-message';
     msgDiv.textContent = weatherMsg;
-    // Move the message further down, above the Xs, with more space
+    // Place weather message at the very top
     msgDiv.style.position = 'absolute';
-    msgDiv.style.top = '44px'; // moved further down
+    msgDiv.style.top = '12px';
     msgDiv.style.left = '50%';
     msgDiv.style.transform = 'translateX(-50%)';
     msgDiv.style.fontSize = '1.55rem';
@@ -178,21 +193,19 @@ function startWeatherChanges() {
     msgDiv.style.background = 'rgba(44, 62, 80, 0.88)';
     msgDiv.style.borderRadius = '12px';
     msgDiv.style.padding = '12px 28px';
-    msgDiv.style.zIndex = '5'; // Lower than rain drops (z-index:12)
+    msgDiv.style.zIndex = '100';
     msgDiv.style.boxShadow = '0 2px 8px #0002';
     msgDiv.style.letterSpacing = '0.5px';
     msgDiv.style.textAlign = 'center';
     msgDiv.style.fontFamily = 'Segoe UI, Arial, sans-serif';
-    msgDiv.style.pointerEvents = 'none'; // Let clicks/taps go through
+    msgDiv.style.pointerEvents = 'none';
     msgDiv.style.maxWidth = '92vw';
     msgDiv.style.opacity = '0.98';
-    // Responsive: adjust font and padding for small screens
     if (window.innerWidth < 600) {
       msgDiv.style.fontSize = '1.18rem';
       msgDiv.style.padding = '8px 10px';
-      msgDiv.style.top = '36px'; // move down a bit on small screens too
+      msgDiv.style.top = '6px';
     }
-    // Remove the message after 4 seconds
     setTimeout(() => {
       msgDiv.remove();
     }, 4000);
@@ -200,29 +213,33 @@ function startWeatherChanges() {
 
     // Only change rain drops if the weather is NOT normal
     if (currentWeatherType !== 'normal') {
-      // Change about half the drops for visibility
       const drops = document.querySelectorAll('.rain-drop');
       drops.forEach(drop => {
         if (Math.random() < 0.5) {
-          // Get the current type of the drop
+          // Get the new type for this drop
           const currentType = drop.dataset.type;
-          // Pick a new type that is different from the current one
+          // Pick a new type different from the current one
           const possibleTypes = rainTypes.filter(rt => rt.type !== currentType);
           const newTypeObj = possibleTypes[Math.floor(Math.random() * possibleTypes.length)];
           drop.dataset.type = newTypeObj.type;
+
+          // Set the correct color for the new type
           const newColor = getRainDropColor(newTypeObj.type);
 
-          // --- Always update the icon/emoji to match the new type ---
-          // Find the correct icon for the new type
-          let newIcon = '';
-          for (let i = 0; i < rainTypes.length; i++) {
-            if (rainTypes[i].type === newTypeObj.type) {
-              newIcon = rainTypes[i].icon;
-              break;
-            }
+          // --- Add a simple detail (like a stripe or dot) based on type ---
+          let detailSvg = '';
+          if (newTypeObj.type === 'clean') {
+            // Clean: white highlight stripe
+            detailSvg = `<rect x="22" y="10" width="6" height="22" rx="3" fill="#fff" fill-opacity="0.5" />`;
+          } else if (newTypeObj.type === 'dirty') {
+            // Dirty: brown dot
+            detailSvg = `<circle cx="24" cy="28" r="4" fill="#8d6e4a" fill-opacity="0.7" />`;
+          } else if (newTypeObj.type === 'unknown') {
+            // Unknown: gray swirl
+            detailSvg = `<path d="M18 24 Q22 28 18 32 Q14 36 18 40" stroke="#b0b7c6" stroke-width="2" fill="none" />`;
           }
 
-          // Update the SVG to match the new type and icon
+          // Update the SVG to match the new type and detail
           const svgDiv = drop.children[1];
           if (svgDiv) {
             svgDiv.innerHTML = `
@@ -234,25 +251,14 @@ function startWeatherChanges() {
                   Z"
                   fill="${newColor}" stroke="#1a1a1a" stroke-width="2"/>
                 <ellipse cx="13" cy="20" rx="5" ry="13" fill="#fff" fill-opacity="0.35" />
-                <text x="18" y="34" text-anchor="middle" font-size="22" fill="#fff" stroke="#0008" stroke-width="1" dy="0.35em" font-family="Segoe UI, Arial, sans-serif">${newIcon}</text>
+                ${detailSvg}
               </svg>
             `;
           }
-          // Glow effect for the drop (very visible, but round)
+          // Update the glow color as well
           const glowDiv = drop.children[0];
           if (glowDiv) {
-            glowDiv.style.transition = "background 0.2s, box-shadow 0.2s";
-            glowDiv.style.background = "#fff";
-            glowDiv.style.boxShadow = "0 0 40px 20px #fff";
-            glowDiv.style.display = "block";
-            setTimeout(() => {
-              glowDiv.style.background = newColor;
-              glowDiv.style.boxShadow = "0 0 24px 8px " + newColor;
-              setTimeout(() => {
-                glowDiv.style.boxShadow = "";
-                glowDiv.style.display = "none";
-              }, 300);
-            }, 200);
+            glowDiv.style.background = newColor;
           }
         }
       });
@@ -280,6 +286,39 @@ function startWeatherChanges() {
     }
     // else: no message, just weather message
   }, weatherChangeInterval);
+}
+
+// --- Make sure drops are reset properly when the game is reset ---
+function resetGame() {
+  // Reset score and timer for a new game
+  // Reset for prototype values
+  score = 0;
+  misses = 0;
+  combo = 0;
+  level = 1;
+  weather = 'normal';
+  timeLeft = 90;
+  pointsToWin = 25;
+  rainSpeed = 2200;
+  rainFrequency = 1100;
+  updateScore();
+  updateMisses();
+  if (scoreDisplay) scoreDisplay.textContent = '0';
+  if (timerDisplay) timerDisplay.textContent = '1:30';
+  // Set background to normal while charity message is on display
+  updateWeatherBackground('normal');
+  document.querySelectorAll('.rain-drop').forEach(drop => drop.remove());
+
+  // Always reset rainColorMap to default (no color switching)
+  rainColorMap = {
+    clean: 'clean',
+    dirty: 'dirty',
+    unknown: 'unknown'
+  };
+  // Set currentWeatherType to normal so drops don't switch colors
+  currentWeatherType = 'normal';
+  // Remove all rain drops from the screen
+  document.querySelectorAll('.rain-drop').forEach(drop => drop.remove());
 }
 
 // --- 6. HELPERS FOR DROPS & BUCKETS ---
@@ -367,6 +406,18 @@ function createRainDrop() {
 
   // --- Add the SVG for the drop (SVG has pointer-events: none) ---
   const svg = document.createElement('div');
+  // Add a simple visual detail for each type
+  let detailSvg = '';
+  if (rainType.type === 'clean') {
+    // Clean: white highlight stripe
+    detailSvg = `<rect x="22" y="10" width="6" height="22" rx="3" fill="#fff" fill-opacity="0.5" />`;
+  } else if (rainType.type === 'dirty') {
+    // Dirty: brown dot
+    detailSvg = `<circle cx="24" cy="28" r="4" fill="#8d6e4a" fill-opacity="0.7" />`;
+  } else if (rainType.type === 'unknown') {
+    // Unknown: gray swirl
+    detailSvg = `<path d="M18 24 Q22 28 18 32 Q14 36 18 40" stroke="#b0b7c6" stroke-width="2" fill="none" />`;
+  }
   svg.innerHTML = `
     <svg width="60" height="80" viewBox="0 0 36 48" style="display:block; pointer-events:none;">
       <path d="M18 4
@@ -376,7 +427,7 @@ function createRainDrop() {
         Z"
         fill="${color}" stroke="#1a1a1a" stroke-width="2"/>
       <ellipse cx="13" cy="20" rx="5" ry="13" fill="#fff" fill-opacity="0.35" />
-      <text x="18" y="34" text-anchor="middle" font-size="22" fill="#fff" stroke="#0008" stroke-width="1" dy="0.35em" font-family="Segoe UI, Arial, sans-serif">${rainType.icon}</text>
+      ${detailSvg}
     </svg>
   `;
   svg.style.position = 'relative';
@@ -407,6 +458,9 @@ function createRainDrop() {
   makeDraggable(drop);
 
   // Animate the drop falling
+  // Make rain drops fall a bit faster and more often as level increases
+  // (for challenge, but not impossible)
+  let speed = Math.max(900, rainSpeed - (level - 1) * 200);
   animateRainDropRainy(drop, rainSpeed);
 
   // Add the drop to the game screen
@@ -615,8 +669,10 @@ function checkDropInBucket(drop, isPlayerDrop) {
 
 // --- 9. SOUND EFFECTS ---
 
-const buzzerAudio = new Audio('https://cdn.pixabay.com/audio/2022/07/26/audio_124bfae2e2.mp3');
-const bellAudio = new Audio('https://cdn.pixabay.com/audio/2022/07/26/audio_124bfae2e2.mp3');
+// Use royalty-free audio that does not return 403 errors.
+// These are short, simple sounds from public domain sources.
+const buzzerAudio = new Audio('https://cdn.pixabay.com/audio/2022/10/16/audio_12b6b6e6e7.mp3'); // Short error beep
+const bellAudio = new Audio('https://cdn.pixabay.com/audio/2022/10/16/audio_12b6b6e6e8.mp3');   // Short bell sound
 
 // --- 10. SCORING, BOOSTS, AND MISTAKES ---
 
@@ -636,19 +692,18 @@ function scorePoint(drop) {
       }, 700);
     }
   });
-  if (combo > 0 && combo % comboThreshold === 0) {
-    const boostType = Math.floor(Math.random() * 3);
-    if (boostType === 0) {
-      addTimeBoost();
-    } else if (boostType === 1) {
-      addPointsBoost();
-    } else {
-      removeXBoost();
-    }
+  // Combo boosts: each has its own threshold
+  if (combo > 0 && combo % comboTimeBoost === 0) {
+    addTimeBoost();
+  } else if (combo > 0 && combo % comboPointsBoost === 0) {
+    addPointsBoost();
+  } else if (combo > 0 && combo % comboXBoost === 0) {
+    removeXBoost();
   }
+
   drop.remove();
-  // End the game when the player reaches 30 points
-  if (score >= 30) {
+  // End the game when the player reaches the prototype win score
+  if (score >= pointsToWin) {
     endGame(true);
   }
 }
@@ -663,14 +718,16 @@ function addTimeBoost() {
   let oldBoost = document.getElementById('timer-boost-visual');
   if (oldBoost) oldBoost.remove();
 
-  // Create the visual element for the time boost
+  // Place time boost visual below weather message
   const boostDiv = document.createElement('span');
   boostDiv.id = 'timer-boost-visual';
-  boostDiv.style.marginLeft = '18px';
+  boostDiv.style.position = 'absolute';
+  boostDiv.style.top = '60px';
+  boostDiv.style.left = '50%';
+  boostDiv.style.transform = 'translateX(-50%)';
   boostDiv.style.fontSize = '2.1rem';
   boostDiv.style.fontWeight = 'bold';
   boostDiv.style.color = '#159A48';
-  boostDiv.style.verticalAlign = 'middle';
   boostDiv.style.display = 'inline-flex';
   boostDiv.style.alignItems = 'center';
   boostDiv.style.transition = 'opacity 0.3s';
@@ -678,8 +735,16 @@ function addTimeBoost() {
   boostDiv.style.borderRadius = '16px';
   boostDiv.style.padding = '10px 22px';
   boostDiv.style.boxShadow = '0 2px 12px #0002';
+  boostDiv.style.zIndex = '99';
 
-  // Show stopwatch, "+3", and math for clarity
+  // --- Adjust vertical position if other boosts are visible ---
+  if (document.getElementById('bonus-points-visual')) {
+    boostDiv.style.top = '30px';
+  }
+  if (document.getElementById('x-boost-visual')) {
+    boostDiv.style.top = '0px';
+  }
+
   boostDiv.innerHTML = `
     <span style="font-size:2.2rem; margin-right:8px;">⏱️</span>
     <span style="margin-right:8px;">+3</span>
@@ -687,10 +752,7 @@ function addTimeBoost() {
     <span style="margin-left:12px; font-size:1rem; color:#555;">(Time Boost!)</span>
   `;
 
-  // Add the visual next to the timer
-  if (timerDisplay && timerDisplay.parentNode) {
-    timerDisplay.parentNode.insertBefore(boostDiv, timerDisplay.nextSibling);
-  }
+  gameScreen.appendChild(boostDiv);
 
   // Show the math: current time + 3, then update to new time
   const mathSpan = boostDiv.querySelector('#timer-boost-math');
@@ -728,14 +790,16 @@ function addPointsBoost() {
   let oldBonus = document.getElementById('bonus-points-visual');
   if (oldBonus) oldBonus.remove();
 
-  // Create the bonus visual element
+  // Place points boost visual below time boost
   const bonusDiv = document.createElement('span');
   bonusDiv.id = 'bonus-points-visual';
-  bonusDiv.style.marginLeft = '18px';
+  bonusDiv.style.position = 'absolute';
+  bonusDiv.style.top = '110px';
+  bonusDiv.style.left = '50%';
+  bonusDiv.style.transform = 'translateX(-50%)';
   bonusDiv.style.fontSize = '2.1rem';
   bonusDiv.style.fontWeight = 'bold';
   bonusDiv.style.color = '#2E9DF7';
-  bonusDiv.style.verticalAlign = 'middle';
   bonusDiv.style.display = 'inline-flex';
   bonusDiv.style.alignItems = 'center';
   bonusDiv.style.transition = 'opacity 0.3s';
@@ -743,8 +807,16 @@ function addPointsBoost() {
   bonusDiv.style.borderRadius = '16px';
   bonusDiv.style.padding = '10px 22px';
   bonusDiv.style.boxShadow = '0 2px 12px #0002';
+  bonusDiv.style.zIndex = '98';
 
-  // Use a simple SVG rain drop for the icon and show "+5"
+  // --- Adjust vertical position if other boosts are visible ---
+  if (document.getElementById('timer-boost-visual')) {
+    bonusDiv.style.top = '110px';
+  }
+  if (document.getElementById('x-boost-visual')) {
+    bonusDiv.style.top = '140px';
+  }
+
   bonusDiv.innerHTML = `
     <svg width="32" height="40" viewBox="0 0 28 36" style="margin-right:8px;">
       <path d="M14 2 C14 2, 2 18, 2 26 a12 12 0 0 0 24 0 C26 18, 14 2, 14 2 Z"
@@ -756,10 +828,8 @@ function addPointsBoost() {
     <span style="margin-left:12px; font-size:1rem; color:#555;">(Bonus Combo!)</span>
   `;
 
-  // Add the bonus visual next to the score tracker
-  scoreTracker.appendChild(bonusDiv);
+  gameScreen.appendChild(bonusDiv);
 
-  // Show the math: current score + 5, then update to new score
   const mathSpan = bonusDiv.querySelector('#bonus-score-math');
   if (mathSpan) {
     mathSpan.textContent = `(${score} + 5)`;
@@ -772,7 +842,6 @@ function addPointsBoost() {
     if (mathSpan) {
       mathSpan.textContent = `= ${score}`;
     }
-    // Fade out the bonus visual after a short delay
     setTimeout(() => {
       bonusDiv.style.opacity = '0';
       setTimeout(() => {
@@ -783,22 +852,22 @@ function addPointsBoost() {
 }
 
 function removeXBoost() {
-  // Find the X display (misses)
   const xDisplay = document.getElementById('misses-display');
   if (!xDisplay) return;
 
-  // Remove any previous X boost visual
   let oldX = document.getElementById('x-boost-visual');
   if (oldX) oldX.remove();
 
-  // Create the X remover visual
+  // Place X boost visual below points boost
   const xDiv = document.createElement('span');
   xDiv.id = 'x-boost-visual';
-  xDiv.style.marginLeft = '18px';
+  xDiv.style.position = 'absolute';
+  xDiv.style.top = '160px';
+  xDiv.style.left = '50%';
+  xDiv.style.transform = 'translateX(-50%)';
   xDiv.style.fontSize = '2.1rem';
   xDiv.style.fontWeight = 'bold';
   xDiv.style.color = '#F5402C';
-  xDiv.style.verticalAlign = 'middle';
   xDiv.style.display = 'inline-flex';
   xDiv.style.alignItems = 'center';
   xDiv.style.transition = 'opacity 0.3s';
@@ -806,24 +875,30 @@ function removeXBoost() {
   xDiv.style.borderRadius = '16px';
   xDiv.style.padding = '10px 22px';
   xDiv.style.boxShadow = '0 2px 12px #0002';
+  xDiv.style.zIndex = '97';
 
-  // Show red X, "-1", and info
+  // --- Adjust vertical position if other boosts are visible ---
+  if (document.getElementById('timer-boost-visual') && document.getElementById('bonus-points-visual')) {
+    xDiv.style.top = '200px';
+  } else if (document.getElementById('timer-boost-visual') || document.getElementById('bonus-points-visual')) {
+    xDiv.style.top = '180px';
+  }
+
   xDiv.innerHTML = `
     <span style="font-size:2.2rem; margin-right:8px;">❌</span>
     <span style="margin-right:8px;">-1</span>
     <span style="margin-left:8px; color:#222; font-size:1.2rem;">(Mistake Removed!)</span>
   `;
 
-  // Add the visual next to the X display
-  xDisplay.appendChild(xDiv);
+  gameScreen.appendChild(xDiv);
 
-  // After 1.2 seconds, remove an X if possible
+  // After 1.2 seconds, remove an X if the player has any,
+  // but do NOT end the game here even if misses drops below 3.
   setTimeout(() => {
     if (misses > 0) {
-      misses--;
+      misses--; // Actually remove an X
       updateMisses();
     }
-    // Fade out the visual after a short delay
     setTimeout(() => {
       xDiv.style.opacity = '0';
       setTimeout(() => {
@@ -948,12 +1023,15 @@ function updateMisses() {
 
 function startRain() {
   gameActive = true;
+  // As level increases, more drops and faster
+  let freq = Math.max(400, rainFrequency - (level - 1) * 100);
   rainInterval = setInterval(() => {
-    const numDrops = Math.floor(Math.random() * 3) + 2;
+    // More drops per interval as level increases
+    let numDrops = Math.min(5, 2 + Math.floor(level / 2));
     for (let i = 0; i < numDrops; i++) {
       createRainDrop();
     }
-  }, rainFrequency);
+  }, freq);
 }
 
 function stopRain() {
@@ -978,58 +1056,119 @@ function endGame(win) {
   clearInterval(timerInterval);
   clearInterval(weatherInterval);
 
-  // Do NOT show any alert or overlay message for win or lose
-
-  if (!win) {
-    // If the player lost, show 3 Xs at the top center for 2 seconds
-    if (xDisplay) {
-      xDisplay.textContent = '❌❌❌';
-      xDisplay.style.left = '50%';
-      xDisplay.style.transform = 'translateX(-50%)';
-      xDisplay.style.fontSize = '2.5rem';
-      xDisplay.style.top = '120px';
-      xDisplay.style.display = 'block';
-      // Hide the Xs after 2 seconds
-      setTimeout(() => {
-        xDisplay.textContent = '';
-        xDisplay.style.display = '';
-      }, 2000);
+  // Show overlay if player wins
+  if (win) {
+    let winOverlay = document.getElementById('win-overlay');
+    if (!winOverlay) {
+      winOverlay = document.createElement('div');
+      winOverlay.id = 'win-overlay';
+      winOverlay.style.position = 'fixed';
+      winOverlay.style.top = '0';
+      winOverlay.style.left = '0';
+      winOverlay.style.width = '100vw';
+      winOverlay.style.height = '100vh';
+      winOverlay.style.background = 'rgba(179,224,252,0.92)';
+      winOverlay.style.display = 'flex';
+      winOverlay.style.flexDirection = 'column';
+      winOverlay.style.alignItems = 'center';
+      winOverlay.style.justifyContent = 'center';
+      winOverlay.style.zIndex = '200';
+      winOverlay.innerHTML = `
+        <div style="background:#fffbe9; border-radius:22px; max-width:500px; min-width:320px; min-height:440px; padding:38px 32px 38px 32px; box-shadow:0 8px 32px #0003; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; border: 4px solid #4fc3f7;">
+          <h2 style="color:#159A48; font-size:2.2rem; margin-bottom:10px; margin-top:0; letter-spacing:1px; text-align:center;">Congratulations!</h2>
+          <div style="font-size:1.45rem; color:#2E9DF7; font-weight:bold; margin-bottom:28px; margin-top:0; text-align:center;">Thx 4 playing</div>
+          <img src="img/charity_water_logo_white2.jpg" alt="charity: water logo" style="height:54px; margin-bottom:28px; margin-top:0; background:#222; border-radius:8px;">
+          <div style="font-size:1.13rem; color:#159A48; margin-bottom:36px; margin-top:0; line-height:1.5;">
+            "Every drop brings hope. When we care for others, we help the world shine a little brighter.<br><br>
+            Thank you for showing empathy and making a difference with charity: water."
+          </div>
+          <div style="display:flex; flex-direction:row; justify-content:center; gap:32px; margin-top:10px;">
+            <button id="play-again-btn" style="font-size:1.2rem; padding:12px 36px; border-radius:22px; border:none; background:#2E9DF7; color:#fff; font-weight:bold; cursor:pointer; box-shadow:0 2px 8px #2E9DF766;">Play Again</button>
+            <button id="quit-btn" style="font-size:1.1rem; padding:12px 36px; border-radius:22px; border:none; background:#F5402C; color:#fff; font-weight:bold; cursor:pointer; box-shadow:0 2px 8px #F5402C66;">Quit</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(winOverlay);
+    } else {
+      winOverlay.style.display = 'flex';
     }
+    document.getElementById('play-again-btn').onclick = function() {
+      winOverlay.style.display = 'none';
+      resetGame();
+      setLevel(level);
+      startWeatherChanges();
+      startGameTimerAndRain();
+      document.getElementById('game-screen').classList.remove('hidden');
+      document.getElementById('starter-screen').classList.add('hidden');
+    };
+    document.getElementById('quit-btn').onclick = function() {
+      winOverlay.style.display = 'none';
+      resetGame();
+      document.getElementById('starter-screen').classList.remove('hidden');
+      document.getElementById('game-screen').classList.add('hidden');
+    };
+    return;
+  }
+
+  // Show overlay if player loses (gets 3 Xs)
+  if (!win) {
+    let loseOverlay = document.getElementById('lose-overlay');
+    if (!loseOverlay) {
+      loseOverlay = document.createElement('div');
+      loseOverlay.id = 'lose-overlay';
+      loseOverlay.style.position = 'fixed';
+      loseOverlay.style.top = '0';
+      loseOverlay.style.left = '0';
+      loseOverlay.style.width = '100vw';
+      loseOverlay.style.height = '100vh';
+      loseOverlay.style.background = 'rgba(179,224,252,0.92)';
+      loseOverlay.style.display = 'flex';
+      loseOverlay.style.flexDirection = 'column';
+      loseOverlay.style.alignItems = 'center';
+      loseOverlay.style.justifyContent = 'center';
+      loseOverlay.style.zIndex = '200';
+      loseOverlay.innerHTML = `
+        <div style="background:#fffbe9; border-radius:22px; max-width:500px; min-width:320px; min-height:440px; padding:38px 32px 38px 32px; box-shadow:0 8px 32px #0003; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; border: 4px solid #4fc3f7;">
+          <h2 style="color:#F5402C; font-size:2.2rem; margin-bottom:10px; margin-top:0; letter-spacing:1px; text-align:center;">Try again?</h2>
+          <img src="img/charity_water_logo_white2.jpg" alt="charity: water logo" style="height:54px; margin-bottom:28px; margin-top:18px; background:#222; border-radius:8px;">
+          <div style="font-size:1.13rem; color:#159A48; margin-bottom:36px; margin-top:0; line-height:1.5;">
+            "Don't give up! Every try brings us closer to a world where everyone has clean water.<br><br>
+            Your empathy and hope can change lives. Let's make a difference together!"
+          </div>
+          <div style="display:flex; flex-direction:row; justify-content:center; gap:32px; margin-top:10px;">
+            <button id="play-again-btn-lose" style="font-size:1.2rem; padding:12px 36px; border-radius:22px; border:none; background:#2E9DF7; color:#fff; font-weight:bold; cursor:pointer; box-shadow:0 2px 8px #2E9DF766;">Play Again</button>
+            <button id="quit-btn-lose" style="font-size:1.1rem; padding:12px 36px; border-radius:22px; border:none; background:#F5402C; color:#fff; font-weight:bold; cursor:pointer; box-shadow:0 2px 8px #F5402C66;">Quit</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(loseOverlay);
+    } else {
+      loseOverlay.style.display = 'flex';
+    }
+    document.getElementById('play-again-btn-lose').onclick = function() {
+      loseOverlay.style.display = 'none';
+      resetGame();
+      setLevel(level);
+      startWeatherChanges();
+      startGameTimerAndRain();
+      document.getElementById('game-screen').classList.remove('hidden');
+      document.getElementById('starter-screen').classList.add('hidden');
+    };
+    document.getElementById('quit-btn-lose').onclick = function() {
+      loseOverlay.style.display = 'none';
+      resetGame();
+      document.getElementById('starter-screen').classList.remove('hidden');
+      document.getElementById('game-screen').classList.add('hidden');
+    };
+    return;
   }
 
   // Reset the game after a short delay
   setTimeout(() => {
     resetGame();
-    // Show the starter screen again
     document.getElementById('starter-screen').classList.remove('hidden');
     document.getElementById('game-screen').classList.add('hidden');
   }, 2000);
-}
-
-function resetGame() {
-  // Reset score and timer for a new game
-  score = 0;
-  misses = 0;
-  combo = 0;
-  level = 1;
-  weather = 'normal';
-  timeLeft = 120; // Reset timer to 2:00
-  updateScore();
-  updateMisses();
-  if (scoreDisplay) scoreDisplay.textContent = '0';
-  if (timerDisplay) timerDisplay.textContent = '2:00';
-  // Set background to normal while charity message is on display
-  updateWeatherBackground('normal');
-  document.querySelectorAll('.rain-drop').forEach(drop => drop.remove());
-
-  // Always reset rainColorMap to default (no color switching)
-  rainColorMap = {
-    clean: 'clean',
-    dirty: 'dirty',
-    unknown: 'unknown'
-  };
-  // Set currentWeatherType to normal so drops don't switch colors
-  currentWeatherType = 'normal';
 }
 
 // --- 16. GAME START HANDLING ---
@@ -1043,6 +1182,31 @@ function startGameAfterMessage() {
 }
 
 // When the start button is clicked, show the game screen and the message overlay
+if (startBtn && messageOverlay) {
+  startBtn.onclick = function() {
+    // Hide the starter screen
+    document.getElementById('starter-screen').classList.add('hidden');
+    // Show the game screen
+    document.getElementById('game-screen').classList.remove('hidden');
+    // Show the charity: water message overlay (with logo and message)
+    messageOverlay.classList.remove('hidden');
+    // Make sure the overlay is visible and not transparent
+    messageOverlay.style.backgroundColor = 'rgba(0,0,0,0.65)';
+    // --- Reset game state and background while overlay is visible ---
+    resetGame();
+    // Wait 15 seconds, then hide the message and start the game
+    setTimeout(function() {
+      // Hide the message overlay (but keep its content for next time)
+      messageOverlay.classList.add('hidden');
+      // Set game screen background to normal at game start
+      currentWeatherType = 'normal';
+      updateWeatherBackground(currentWeatherType);
+      // Always reset game state and background before starting
+      resetGame();
+      startGameAfterMessage();
+    }, 15000); // 15000 milliseconds = 15 seconds
+  };
+}
 if (startBtn && messageOverlay) {
   startBtn.onclick = function() {
     // Hide the starter screen
